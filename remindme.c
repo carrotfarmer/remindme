@@ -1,3 +1,5 @@
+#include "shared.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,8 +7,6 @@
 
 #define EXIT_SUCCESS 0
 #define EXIT_ERR_TOO_FEW_ARGS 1
-
-#define REMINDERS_FILE ".remindme"
 
 struct Reminder {
   unsigned short id;
@@ -33,24 +33,14 @@ int main(int argc, char **argv) {
 
   if (argc == 3) {
     if (strcmp(argv[1], "-d") == 0) {
-      fseek(file, 0, SEEK_END);
-      long fsize = ftell(file);
-      fseek(file, 0, SEEK_SET);
+      int del_id = atoi(argv[2]);
+      int del = delete_reminder(del_id, file);
 
-      char *buf = malloc(fsize + 1);
-      fread(buf, fsize, 1, file);
-
-      buf[fsize] = 0;
-
-      printf("%s", buf);
-
-      char *new_buf = buf;
-
-      // TODO: iterate through buf by lines and delete
-      // line containing argv[1] from new_buf
-      // write new_buf to file
-
-      free(buf);
+      if (del == -1) {
+        fprintf(stderr, "err: reminder with id %d not found\n", del_id);
+      } else {
+        printf("reminder with id %d deleted\n", del_id);
+      }
     } else {
       struct Reminder r;
       r.message = argv[1];
