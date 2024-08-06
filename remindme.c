@@ -1,3 +1,5 @@
+// remindme client
+
 #include "shared.h"
 
 #include <stdio.h>
@@ -14,9 +16,7 @@ int main(int argc, char **argv) {
   srand(time(NULL));
 
   FILE *file;
-  char filePath[1024];
-
-  snprintf(filePath, sizeof(filePath), "%s/%s", getenv("HOME"), REMINDERS_FILE);
+  char *filePath = get_file_path();
   file = fopen(filePath, "a+");
 
   // if (argc < 2) {
@@ -26,16 +26,21 @@ int main(int argc, char **argv) {
 
   if (argc == 1 || (argc == 2 && (strcmp(argv[1], "-d") == 0))) {
     struct Reminder *reminders = get_reminders(file);
-    int reminder_count = get_reminder_count(file);
 
     if (reminders == NULL) {
       printf("No reminders set\n");
       return EXIT_SUCCESS;
     }
 
+    int reminder_count = get_reminder_count(file);
+
+    printf("Found %d reminders\n\n", reminder_count);
     for (int i = 0; i < reminder_count; i++) {
-      printf("Reminder %d: %s\n", reminders[i].id, reminders[i].message);
+      printf("id: %hu, message: %s, time: %s", reminders[i].id,
+             reminders[i].message, ctime(&reminders[i].time));
     }
+
+    free(reminders);
   }
 
   if (argc == 3) {
@@ -54,8 +59,7 @@ int main(int argc, char **argv) {
   if (argc == 4) {
     time_t raw_time = gen_raw_time(argv);
     if (raw_time == -1) {
-      fprintf(stderr, "err: couldn't convert \"%s %s\"to time_t\n", argv[2],
-              argv[3]);
+      fprintf(stderr, "err: invalid time format");
       return 1;
     }
 

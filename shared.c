@@ -5,6 +5,12 @@
 #include <string.h>
 #include <time.h>
 
+char *get_file_path() {
+  char *file_path = malloc(1024);
+  snprintf(file_path, 1024, "%s/%s", getenv("HOME"), REMINDERS_FILE);
+  return file_path;
+}
+
 char *read_to_buf(FILE *file) {
   fseek(file, 0, SEEK_END);
   long fsize = ftell(file);
@@ -67,11 +73,16 @@ time_t gen_raw_time(char **str_args) {
 
   time_t raw_time = mktime(&time_info);
 
+  if (raw_time <= 0) {
+    return -1;
+  }
+
   return raw_time;
 }
 
 struct Reminder *get_reminders(FILE *file) {
-  struct Reminder *reminders = NULL;
+  struct Reminder *reminders =
+      malloc(sizeof(struct Reminder) * get_reminder_count(file));
   int curr_index = 0;
 
   char *buf = read_to_buf(file);
@@ -91,6 +102,8 @@ struct Reminder *get_reminders(FILE *file) {
 
     reminders[curr_index] = r;
     curr_index++;
+
+    split = strtok(NULL, "\n");
   }
 
   free(buf);
