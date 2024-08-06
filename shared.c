@@ -68,7 +68,7 @@ time_t gen_raw_time(char **str_args) {
   // parse time string
   int hour, minute;
   sscanf(time_str, "%d:%d", &hour, &minute);
-  time_info.tm_hour = hour;
+  time_info.tm_hour = hour - 1;
   time_info.tm_min = minute;
 
   time_t raw_time = mktime(&time_info);
@@ -89,17 +89,12 @@ struct Reminder *get_reminders(FILE *file) {
 
   char *split = strtok(buf, "\n");
   while (split != NULL) {
-    struct Reminder r;
-
     unsigned short id;
     char *message;
     time_t time;
-    sscanf(split, "%hu === %s === %ld", &id, message, &time);
+    sscanf(split, "%hu === %m[^=] === %ld", &id, &message, &time);
 
-    r.id = id;
-    r.message = message;
-    r.time = time;
-
+    struct Reminder r = {id, message, time};
     reminders[curr_index] = r;
     curr_index++;
 
