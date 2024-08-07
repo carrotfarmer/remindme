@@ -77,15 +77,25 @@ void update_timer(int timer_fd, time_t next_reminder_time,
   new_value.it_interval.tv_sec = 0; // Set to 0 for one-shot timer
   new_value.it_interval.tv_nsec = 0;
 
+  printf("seconds: %ld\n", seconds);
   if (timerfd_settime(timer_fd, 0, &new_value, NULL) == -1) {
     fprintf(stderr, "err: failed to set timerfd\n");
     exit(EXIT_ERR_SET_TIMERFD);
   }
 
+  // check if timer_fd already exists in epoll
   ev.data.fd = timer_fd;
   if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, timer_fd, &ev) == -1) {
-    fprintf(stderr, "err: failed to add timer_fd to epoll\n");
-    exit(EXIT_ERR_INIT_EPOLL);
+    if (errno == EEXIST) {
+      if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, timer_fd, &ev) == -1) {
+        perror("epoll_ctl: EPOLL_CTL_MOD");
+        exit(EXIT_FAILURE);
+      }
+    } else {
+      fprintf(stderr, "err: failed to add timer_fd to epoll\n");
+      perror("epoll_ctl");
+      exit(EXIT_FAILURE);
+    }
   }
 
   printf("Timer set to %ld seconds\n", seconds);
