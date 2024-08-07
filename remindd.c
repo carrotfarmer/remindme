@@ -2,6 +2,7 @@
 
 #include "shared.h"
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,25 +66,41 @@ struct Reminder *get_next_reminder(FILE *file, struct Reminder *reminders) {
   return reminder;
 }
 
-void reload_reminders(FILE *file, struct Reminder *reminders, int timer_fd) {
-  struct Reminder *next_reminder = get_next_reminder(file, reminders);
-  printf("Found next reminder: %s\n", next_reminder->message);
-
-  struct timespec curr_time;
-  if (clock_gettime(CLOCK_REALTIME, &curr_time) == -1) {
-    fprintf(stderr, "err: failed to get current time\n");
-    exit(EXIT_ERR_GET_CURR_TIME);
-  }
-
-  time_t diff_sec = next_reminder->time - curr_time.tv_sec;
-
+void update_timer(int timer_fd, time_t next_reminder_time,
+                  struct epoll_event ev, int epoll_fd) {
   struct itimerspec new_value;
-  memset(&new_value, 0, sizeof(new_value));
-  new_value.it_value.tv_sec = diff_sec;
+  time_t now = time(NULL);
+  time_t seconds = next_reminder_time - now;
+
+  new_value.it_value.tv_sec = seconds;
+  new_value.it_value.tv_nsec = 0;
+  new_value.it_interval.tv_sec = 0; // Set to 0 for one-shot timer
+  new_value.it_interval.tv_nsec = 0;
 
   if (timerfd_settime(timer_fd, 0, &new_value, NULL) == -1) {
     fprintf(stderr, "err: failed to set timerfd\n");
     exit(EXIT_ERR_SET_TIMERFD);
+  }
+
+  ev.data.fd = timer_fd;
+  if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, timer_fd, &ev) == -1) {
+    fprintf(stderr, "err: failed to add timer_fd to epoll\n");
+    exit(EXIT_ERR_INIT_EPOLL);
+  }
+
+  printf("Timer set to %ld seconds\n", seconds);
+}
+
+void load_reminders(FILE *file, int timer_fd) {
+  freopen(NULL, "r", file);
+  struct Reminder *reminders = get_reminders(file);
+
+  struct Reminder *next_reminder = get_next_reminder(file, reminders);
+
+  if (get_reminder_count(file) != 0) {
+    printf("Next reminder: %s\n", next_reminder->message);
+  } else {
+    printf("No reminders found\n");
   }
 }
 
@@ -116,49 +133,22 @@ int main() {
 
   FILE *file = fopen(file_path, "r");
 
-  struct Reminder *reminders = get_reminders(file);
-
-  struct Reminder *next_reminder = get_next_reminder(file, reminders);
-
-  printf("Next reminder: %s\n", next_reminder->message);
+  // add timer_fd and ievent_queue to epoll
+  struct epoll_event ev;
+  ev.events = EPOLLIN;
 
   // initialize timer_fd
-  int timer_fd = timerfd_create(CLOCK_REALTIME, 0);
+  int timer_fd = timerfd_create(CLOCK_REALTIME, TFD_NONBLOCK);
   if (timer_fd == -1) {
     fprintf(stderr, "err: failed to create timerfd\n");
     exit(EXIT_INIT_TIMERFD);
   }
 
-  // get current time
-  struct timespec curr_time;
-  if (clock_gettime(CLOCK_REALTIME, &curr_time) == -1) {
-    fprintf(stderr, "err: failed to get current time\n");
-    exit(EXIT_ERR_GET_CURR_TIME);
-  }
+  load_reminders(file, timer_fd);
 
-  time_t diff_sec = next_reminder->time - curr_time.tv_sec;
-
-  struct itimerspec new_value;
-  memset(&new_value, 0, sizeof(new_value));
-  new_value.it_value.tv_sec = diff_sec;
-
-  if (timerfd_settime(timer_fd, 0, &new_value, NULL) == -1 &&
-      get_reminder_count(file) != 0) {
-    fprintf(stderr, "err: failed to set timerfd\n");
-    exit(EXIT_ERR_SET_TIMERFD);
-  }
-
-  printf("Next reminder: %s\n", next_reminder->message);
-  printf("Setting reminder in %ld seconds\n", diff_sec);
-
-  // add timer_fd and ievent_queue to epoll
-  struct epoll_event ev;
-  ev.events = EPOLLIN;
-  ev.data.fd = timer_fd;
-  if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, timer_fd, &ev) == -1 &&
-      get_reminder_count(file) != 0) {
-    fprintf(stderr, "err: failed to add timer_fd to epoll\n");
-    exit(EXIT_ERR_INIT_EPOLL);
+  if (get_reminder_count(file) != 0) {
+    update_timer(timer_fd, get_next_reminder(file, get_reminders(file))->time,
+                 ev, epoll_fd);
   }
 
   ev.data.fd = ievent_queue;
@@ -175,18 +165,46 @@ int main() {
       exit(EXIT_ERR_EPOLL_WAIT);
     }
 
+    int reload = false;
+    int delete = false;
     for (int i = 0; i < n; i++) {
       if (events[i].data.fd == ievent_queue) {
         // reload reminders
         printf("Reloading reminders\n");
-        reload_reminders(file, reminders, timer_fd);
-      } else if (events[i].data.fd == timer_fd &&
-                 get_reminder_count(file) != 0) {
-        // notify user
+
+        // Clear the inotify event
+        char buffer[1024];
+        read(ievent_queue, buffer, sizeof(buffer));
+
+        reload = true;
+      } else if (events[i].data.fd == timer_fd) {
+        printf("Timer expired\n");
+        uint64_t expirations;
+        ssize_t s = read(timer_fd, &expirations, sizeof(expirations));
+        if (s == -1) {
+          if (errno != EAGAIN) {
+            perror("read");
+            exit(EXIT_FAILURE);
+          }
+          continue;
+        }
+        struct Reminder *next_reminder =
+            get_next_reminder(file, get_reminders(file));
         printf("Reminder: %s\n", next_reminder->message);
         delete_reminder(next_reminder->id, file);
-        reload_reminders(file, reminders, timer_fd);
+        reload = true;
       }
+    }
+
+    if (reload) {
+      freopen(NULL, "r", file);
+      load_reminders(file, timer_fd);
+      if (get_reminder_count(file) != 0) {
+        update_timer(timer_fd,
+                     get_next_reminder(file, get_reminders(file))->time, ev,
+                     epoll_fd);
+      }
+      reload = false;
     }
   }
 }
