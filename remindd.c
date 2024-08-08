@@ -14,6 +14,8 @@
 #include <sys/inotify.h>
 #include <sys/timerfd.h>
 
+#include <libnotify/notify.h>
+
 #define EXIT_SUCCESS 0
 #define EXIT_ERR_INIT_EPOLL 1
 #define EXIT_ERR_INIT_INOTIFY 2
@@ -23,6 +25,7 @@
 #define EXIT_INIT_TIMERFD 6
 #define EXIT_ERR_EPOLL_WAIT 7
 #define EXIT_ERR_SET_TIMERFD 8
+#define EXIT_ERR_INIT_LIBNOTIFY 9
 
 struct Reminder *get_next_reminder(FILE *file, struct Reminder *reminders) {
   int reminder_count = get_reminder_count(file);
@@ -66,39 +69,17 @@ struct Reminder *get_next_reminder(FILE *file, struct Reminder *reminders) {
   return reminder;
 }
 
-void update_timer(int timer_fd, time_t next_reminder_time,
-                  struct epoll_event ev, int epoll_fd) {
-  struct itimerspec new_value;
-  time_t now = time(NULL);
-  time_t seconds = next_reminder_time - now;
-
-  new_value.it_value.tv_sec = seconds;
-  new_value.it_value.tv_nsec = 0;
-  new_value.it_interval.tv_sec = 0; // Set to 0 for one-shot timer
-  new_value.it_interval.tv_nsec = 0;
-
-  printf("seconds: %ld\n", seconds);
-  if (timerfd_settime(timer_fd, 0, &new_value, NULL) == -1) {
-    fprintf(stderr, "err: failed to set timerfd\n");
-    exit(EXIT_ERR_SET_TIMERFD);
+void trigger_notification(char *message) {
+  NotifyNotification *notif_handle;
+  int libnotify_status = notify_init("Reminder!");
+  if (libnotify_status == 0) {
+    fprintf(stderr, "err: failed to initialize libnotify\n");
+    exit(EXIT_ERR_INIT_LIBNOTIFY);
   }
 
-  // check if timer_fd already exists in epoll
-  ev.data.fd = timer_fd;
-  if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, timer_fd, &ev) == -1) {
-    if (errno == EEXIST) {
-      if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, timer_fd, &ev) == -1) {
-        perror("epoll_ctl: EPOLL_CTL_MOD");
-        exit(EXIT_FAILURE);
-      }
-    } else {
-      fprintf(stderr, "err: failed to add timer_fd to epoll\n");
-      perror("epoll_ctl");
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  printf("Timer set to %ld seconds\n", seconds);
+  notif_handle =
+      notify_notification_new("Reminder!", message, "dialog-critical");
+  notify_notification_show(notif_handle, NULL);
 }
 
 void load_reminders(FILE *file, int timer_fd) {
@@ -114,8 +95,55 @@ void load_reminders(FILE *file, int timer_fd) {
   }
 }
 
+void update_timer(int timer_fd, struct Reminder *next_reminder,
+                  struct epoll_event ev, int epoll_fd, FILE *file) {
+  struct itimerspec new_value;
+  time_t now = time(NULL);
+  time_t seconds = next_reminder->time - now;
+
+  new_value.it_value.tv_sec = seconds;
+  new_value.it_value.tv_nsec = 0;
+  new_value.it_interval.tv_sec = 0; // Set to 0 for one-shot timer
+  new_value.it_interval.tv_nsec = 0;
+
+  printf("seconds: %ld\n", seconds);
+  printf("OEIJFEWOIJ");
+
+  if (seconds <= 0) {
+    char notif_msg[256];
+    snprintf(notif_msg, sizeof(notif_msg), "Overdue reminder! %s",
+             next_reminder->message);
+    trigger_notification(notif_msg);
+    delete_reminder(next_reminder->id, NULL);
+    load_reminders(file, timer_fd);
+  }
+
+  if (timerfd_settime(timer_fd, 0, &new_value, NULL) == -1 && seconds >= 0) {
+    fprintf(stderr, "err: failed to set timerfd\n");
+    exit(EXIT_ERR_SET_TIMERFD);
+  }
+
+  // check if timer_fd already exists in epoll
+  ev.data.fd = timer_fd;
+  if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, timer_fd, &ev) == -1) {
+    if (errno == EEXIST) {
+      if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, timer_fd, &ev) == -1) {
+        fprintf(stderr, "err: failed to modify timer event\n");
+        perror("epoll_ctl");
+        exit(EXIT_ERR_INIT_EPOLL);
+      }
+    } else {
+      fprintf(stderr, "err: failed to add timer_fd to epoll\n");
+      perror("epoll_ctl");
+      exit(EXIT_ERR_INIT_EPOLL);
+    }
+  }
+
+  printf("Timer set to %ld seconds\n", seconds);
+}
+
 int main() {
-  int ievent_queue = -1;
+  int inotify_fd = -1;
   int ievent_status = -1;
 
   char *file_path = get_file_path();
@@ -127,13 +155,13 @@ int main() {
   }
 
   const uint32_t INOTIFY_MASK = IN_MODIFY | IN_CREATE | IN_DELETE;
-  ievent_queue = inotify_init1(IN_NONBLOCK);
-  if (ievent_queue == -1) {
+  inotify_fd = inotify_init1(IN_NONBLOCK);
+  if (inotify_fd == -1) {
     fprintf(stderr, "err: failed to initialize inotify instance\n");
     exit(EXIT_ERR_INIT_INOTIFY);
   }
 
-  ievent_status = inotify_add_watch(ievent_queue, file_path, INOTIFY_MASK);
+  ievent_status = inotify_add_watch(inotify_fd, file_path, INOTIFY_MASK);
   if (ievent_status == -1) {
     fprintf(stderr, "err: failed to add %s to inotify watch list\n", file_path);
     exit(EXIT_ERR_ADD_WATCH);
@@ -157,13 +185,14 @@ int main() {
   load_reminders(file, timer_fd);
 
   if (get_reminder_count(file) != 0) {
-    update_timer(timer_fd, get_next_reminder(file, get_reminders(file))->time,
-                 ev, epoll_fd);
+    freopen(NULL, "r", file);
+    update_timer(timer_fd, get_next_reminder(file, get_reminders(file)), ev,
+                 epoll_fd, file);
   }
 
-  ev.data.fd = ievent_queue;
-  if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, ievent_queue, &ev) == -1) {
-    fprintf(stderr, "err: failed to add ievent_queue to epoll\n");
+  ev.data.fd = inotify_fd;
+  if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, inotify_fd, &ev) == -1) {
+    fprintf(stderr, "err: failed to add inotify_fd to epoll\n");
     exit(EXIT_ERR_INIT_EPOLL);
   }
 
@@ -176,25 +205,25 @@ int main() {
     }
 
     int reload = false;
-    int delete = false;
     for (int i = 0; i < n; i++) {
-      if (events[i].data.fd == ievent_queue) {
+      if (events[i].data.fd == inotify_fd) {
         // reload reminders
         printf("Reloading reminders\n");
 
         // Clear the inotify event
         char buffer[1024];
-        read(ievent_queue, buffer, sizeof(buffer));
+        read(inotify_fd, buffer, sizeof(buffer));
 
         reload = true;
       } else if (events[i].data.fd == timer_fd) {
-        printf("Timer expired\n");
+        trigger_notification(
+            get_next_reminder(file, get_reminders(file))->message);
         uint64_t expirations;
         ssize_t s = read(timer_fd, &expirations, sizeof(expirations));
         if (s == -1) {
           if (errno != EAGAIN) {
-            perror("read");
-            exit(EXIT_FAILURE);
+            fprintf(stderr, "err: failed to read from timerfd\n");
+            exit(EXIT_ERR_SET_TIMERFD);
           }
           continue;
         }
@@ -210,9 +239,8 @@ int main() {
       freopen(NULL, "r", file);
       load_reminders(file, timer_fd);
       if (get_reminder_count(file) != 0) {
-        update_timer(timer_fd,
-                     get_next_reminder(file, get_reminders(file))->time, ev,
-                     epoll_fd);
+        update_timer(timer_fd, get_next_reminder(file, get_reminders(file)), ev,
+                     epoll_fd, file);
       }
       reload = false;
     }

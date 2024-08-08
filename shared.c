@@ -28,7 +28,6 @@ int delete_reminder(unsigned short id, FILE *file) {
   int success = -1;
 
   char *buf = read_to_buf(file);
-  char *new_buf = buf;
 
   freopen(NULL, "w", file);
   freopen(NULL, "a+", file);
