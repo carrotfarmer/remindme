@@ -8,9 +8,26 @@
 #include <time.h>
 
 #define EXIT_SUCCESS 0
-#define EXIT_ERR_TOO_FEW_ARGS 1
+#define EXIT_INVALID_ARGS 1
 
 int gen_id() { return rand(); }
+
+void print_help() {
+  printf("Usage:\n");
+  printf("remindme <message> <date - mm/dd/yyyy> <time - hh:mm>\n");
+  printf("remindme\n");
+  printf("remindme -d <id>\n");
+  printf("remindme --clear-all\n");
+
+  printf("\n");
+  printf("Example: remindme \"hello world\" 08/07/2024 23:59\n");
+  printf("This will trigger a notification with \"hello world\" on 08/07/2024 "
+         "at 11:59 PM\n");
+
+  printf("\n");
+  printf("To list all reminders, run remindme with no arguments\n");
+  printf("To delete a reminder, run remindme -d <id>\n");
+}
 
 int main(int argc, char **argv) {
   srand(time(NULL));
@@ -18,11 +35,6 @@ int main(int argc, char **argv) {
   FILE *file;
   char *filePath = get_file_path();
   file = fopen(filePath, "a+");
-
-  // if (argc < 2) {
-  // fprintf(stderr, "Usage: %s <message>\n", argv[0]);
-  // return EXIT_ERR_TOO_FEW_ARGS;
-  //}
 
   if (argc == 1 || (argc == 2 && (strcmp(argv[1], "-d") == 0))) {
     struct Reminder *reminders = get_reminders(file);
@@ -41,9 +53,13 @@ int main(int argc, char **argv) {
     }
 
     free(reminders);
-  }
-
-  if (argc == 3) {
+  } else if (argc == 2 && strcmp(argv[1], "--clear-all") == 0) {
+    fclose(fopen(filePath, "w"));
+    printf("cleared all reminders\n");
+  } else if (argc == 2 &&
+             (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
+    print_help();
+  } else if (argc == 3) {
     if (strcmp(argv[1], "-d") == 0) {
       int del_id = atoi(argv[2]);
       int del = delete_reminder(del_id, file);
@@ -54,9 +70,7 @@ int main(int argc, char **argv) {
         printf("reminder with id %d deleted\n", del_id);
       }
     }
-  }
-
-  if (argc == 4) {
+  } else if (argc == 4) {
     time_t raw_time = gen_raw_time(argv);
     if (raw_time == -1) {
       fprintf(stderr, "err: invalid time format");
@@ -70,6 +84,11 @@ int main(int argc, char **argv) {
 
     fprintf(file, "%hu === %s === %ld\n", r.id, r.message, r.time);
     printf("Reminder \"%s\" set for %s %s\n", r.message, argv[2], argv[3]);
+  } else {
+    printf("err: invalid arguments\n\n");
+    print_help();
+    fclose(file);
+    exit(EXIT_INVALID_ARGS);
   }
 
   fclose(file);
