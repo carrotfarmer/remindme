@@ -106,16 +106,22 @@ void update_timer(int timer_fd, struct Reminder *next_reminder,
   new_value.it_interval.tv_sec = 0; // Set to 0 for one-shot timer
   new_value.it_interval.tv_nsec = 0;
 
-  printf("seconds: %ld\n", seconds);
-  printf("OEIJFEWOIJ");
+  printf("seconds from line 109: %ld\n", seconds);
 
   if (seconds <= 0) {
+    freopen(NULL, "r", file);
     char notif_msg[256];
     snprintf(notif_msg, sizeof(notif_msg), "Overdue reminder! %s",
              next_reminder->message);
     trigger_notification(notif_msg);
-    delete_reminder(next_reminder->id, NULL);
+    delete_reminder(next_reminder->id, file);
+
     load_reminders(file, timer_fd);
+    if (get_reminder_count(file) != 0) {
+      time_t now = time(NULL);
+      time_t seconds = next_reminder->time - now;
+      new_value.it_value.tv_sec = seconds;
+    }
   }
 
   if (timerfd_settime(timer_fd, 0, &new_value, NULL) == -1 && seconds >= 0) {
