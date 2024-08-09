@@ -112,16 +112,18 @@ struct Reminder *get_next_reminder(struct Reminder *reminders) {
   return reminder;
 }
 
-void trigger_notification(char *message) {
+void trigger_notification(char *title, char *message) {
   NotifyNotification *notif_handle;
-  int libnotify_status = notify_init("Reminder!");
+  int libnotify_status = notify_init("remindme");
   if (libnotify_status == 0) {
     fprintf(stderr, "err: failed to initialize libnotify\n");
     exit(EXIT_ERR_INIT_LIBNOTIFY);
   }
 
-  notif_handle =
-      notify_notification_new("Reminder!", message, "dialog-critical");
+  notif_handle = notify_notification_new(title, message, "dialog-information");
+  notify_notification_set_timeout(notif_handle, NOTIFY_EXPIRES_NEVER);
+  notify_notification_set_urgency(notif_handle, NOTIFY_URGENCY_CRITICAL);
+  notify_notification_set_category(notif_handle, "reminder");
   notify_notification_show(notif_handle, NULL);
 }
 
@@ -151,10 +153,7 @@ void update_timer(struct Reminder *next_reminder, int timer_fd, int epoll_fd,
 
   if (seconds <= 0) {
     freopen(NULL, "r", file);
-    char notif_msg[256];
-    snprintf(notif_msg, sizeof(notif_msg), "Overdue reminder! %s",
-             next_reminder->message);
-    trigger_notification(notif_msg);
+    trigger_notification("Overdue Reminder!", next_reminder->message);
     delete_reminder(next_reminder->id, file);
 
     load_reminders();
@@ -165,8 +164,7 @@ void update_timer(struct Reminder *next_reminder, int timer_fd, int epoll_fd,
     }
   }
 
-  if (timerfd_settime(context.timer_fd, 0, &new_value, NULL) == -1 &&
-      seconds >= 0) {
+  if (timerfd_settime(timer_fd, 0, &new_value, NULL) == -1 && seconds >= 0) {
     fprintf(stderr, "err: failed to set timerfd\n");
     exit(EXIT_ERR_SET_TIMERFD);
   }
@@ -272,7 +270,8 @@ int main() {
 
         reload = true;
       } else if (events[i].data.fd == timer_fd) {
-        trigger_notification(get_next_reminder(get_reminders(file))->message);
+        trigger_notification("Reminder!",
+                             get_next_reminder(get_reminders(file))->message);
         uint64_t expirations;
         ssize_t s = read(timer_fd, &expirations, sizeof(expirations));
         if (s == -1) {
