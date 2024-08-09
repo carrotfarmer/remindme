@@ -71,9 +71,9 @@ int main(int argc, char **argv) {
       int del = delete_reminder(del_id, file);
 
       if (del == -1) {
-        fprintf(stderr, "err: reminder with id %d not found\n", del_id);
+        fprintf(stderr, "err: reminder with id %d not found", del_id);
       } else {
-        printf("reminder with id %d deleted\n", del_id);
+        printf("reminder with id %d deleted", del_id);
       }
     }
   } else if (argc == 4) {
@@ -83,15 +83,9 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    struct Reminder r;
-    r.message = argv[1];
-    r.id = gen_id();
-    r.time = raw_time;
-
-    fprintf(file, "%hu === %s === %ld\n", r.id, r.message, r.time);
-    printf("Reminder \"%s\" set for %s %s\n", r.message, argv[2], argv[3]);
-
-    free(r.message);
+    int id = gen_id();
+    fprintf(file, "%hu === %s === %ld\n", id, argv[1], raw_time);
+    printf("Reminder \"%s\" set for %s %s", argv[1], argv[2], ctime(&raw_time));
   } else {
     printf("err: invalid arguments\n\n");
     print_help();

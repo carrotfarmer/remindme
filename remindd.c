@@ -138,7 +138,8 @@ void load_reminders() {
   }
 }
 
-void update_timer(struct Reminder *next_reminder) {
+void update_timer(struct Reminder *next_reminder, int timer_fd, int epoll_fd,
+                  struct epoll_event ev) {
   struct itimerspec new_value;
   time_t now = time(NULL);
   time_t seconds = next_reminder->time - now;
@@ -147,8 +148,6 @@ void update_timer(struct Reminder *next_reminder) {
   new_value.it_value.tv_nsec = 0;
   new_value.it_interval.tv_sec = 0;
   new_value.it_interval.tv_nsec = 0;
-
-  printf("seconds from line 109: %ld\n", seconds);
 
   if (seconds <= 0) {
     freopen(NULL, "r", file);
@@ -173,12 +172,10 @@ void update_timer(struct Reminder *next_reminder) {
   }
 
   // check if timer_fd already exists in epoll
-  context.ev.data.fd = context.timer_fd;
-  if (epoll_ctl(context.epoll_fd, EPOLL_CTL_ADD, context.timer_fd,
-                &context.ev) == -1) {
+  ev.data.fd = timer_fd;
+  if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, timer_fd, &ev) == -1) {
     if (errno == EEXIST) {
-      if (epoll_ctl(context.epoll_fd, EPOLL_CTL_MOD, context.timer_fd,
-                    &context.ev) == -1) {
+      if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, timer_fd, &ev) == -1) {
         fprintf(stderr, "err: failed to modify timer event\n");
         perror("epoll_ctl");
         exit(EXIT_ERR_INIT_EPOLL);
@@ -189,8 +186,6 @@ void update_timer(struct Reminder *next_reminder) {
       exit(EXIT_ERR_INIT_EPOLL);
     }
   }
-
-  printf("Timer set to %ld seconds\n", seconds);
 }
 
 int main() {
@@ -245,7 +240,8 @@ int main() {
 
   if (get_reminder_count(file) != 0) {
     freopen(NULL, "r", file);
-    update_timer(get_next_reminder(get_reminders(file)));
+    update_timer(get_next_reminder(get_reminders(file)), timer_fd, epoll_fd,
+                 ev);
   }
 
   ev.data.fd = inotify_fd;
@@ -296,7 +292,8 @@ int main() {
       freopen(NULL, "r", file);
       load_reminders();
       if (get_reminder_count(file) != 0) {
-        update_timer(get_next_reminder(get_reminders(file)));
+        update_timer(get_next_reminder(get_reminders(file)), timer_fd, epoll_fd,
+                     ev);
       }
       reload = false;
     }
