@@ -9,6 +9,7 @@
 
 #define EXIT_SUCCESS 0
 #define EXIT_INVALID_ARGS 1
+#define EXIT_ERR_OPEN_FILE 2
 
 int gen_id() { return rand(); }
 
@@ -33,8 +34,13 @@ int main(int argc, char **argv) {
   srand(time(NULL));
 
   FILE *file;
-  char *filePath = get_file_path();
-  file = fopen(filePath, "a+");
+  char *file_path = get_file_path();
+  file = fopen(file_path, "a+");
+
+  if (file == NULL) {
+    fprintf(stderr, "err: failed to open file\n");
+    return EXIT_ERR_OPEN_FILE;
+  }
 
   if (argc == 1 || (argc == 2 && (strcmp(argv[1], "-d") == 0))) {
     struct Reminder *reminders = get_reminders(file);
@@ -54,7 +60,7 @@ int main(int argc, char **argv) {
 
     free(reminders);
   } else if (argc == 2 && strcmp(argv[1], "--clear-all") == 0) {
-    fclose(fopen(filePath, "w"));
+    fclose(fopen(file_path, "w"));
     printf("cleared all reminders\n");
   } else if (argc == 2 &&
              (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
@@ -84,13 +90,19 @@ int main(int argc, char **argv) {
 
     fprintf(file, "%hu === %s === %ld\n", r.id, r.message, r.time);
     printf("Reminder \"%s\" set for %s %s\n", r.message, argv[2], argv[3]);
+
+    free(r.message);
   } else {
     printf("err: invalid arguments\n\n");
     print_help();
+
+    free(file_path);
     fclose(file);
     exit(EXIT_INVALID_ARGS);
   }
 
+  free(file_path);
   fclose(file);
+
   return EXIT_SUCCESS;
 }
