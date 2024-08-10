@@ -35,7 +35,6 @@ int main(int argc, char **argv) {
 
   FILE *file;
   char *file_path = get_file_path();
-  printf("file path: %s\n", file_path);
   file = fopen(file_path, "a+");
 
   if (file == NULL) {
