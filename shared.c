@@ -5,10 +5,7 @@
 #include <string.h>
 #include <time.h>
 
-char *get_file_path() {
-  char *file_path = "/etc/.remindme";
-  return file_path;
-}
+char *get_file_path() { return "/etc/.remindme"; }
 
 char *read_to_buf(FILE *file) {
   fseek(file, 0, SEEK_END);
