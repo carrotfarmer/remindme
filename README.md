@@ -6,7 +6,7 @@ Lightweight system reminders for the command line.
 
 ### Arch Linux
 
-If you use Arch Linux, you can install `remindme-cli` from the Arch User Repository (AUR) using an AUR helper like `yay`:
+If you use Arch Linux, you can install [`remindme-cli`](https://aur.archlinux.org/packages/remindme-cli) from the Arch User Repository (AUR) using an AUR helper like `yay`:
 
 ```bash
 yay -S remindme-cli
