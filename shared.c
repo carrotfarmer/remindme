@@ -6,8 +6,7 @@
 #include <time.h>
 
 char *get_file_path() {
-  char *file_path = malloc(1024);
-  snprintf(file_path, 1024, "%s/%s", getenv("HOME"), REMINDERS_FILE);
+  char *file_path = "/etc/.remindme";
   return file_path;
 }
 

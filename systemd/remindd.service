@@ -1,13 +1,9 @@
 [Unit]
 Description=remindme Daemon
-After=network.target
 
 [Service]
+Type=simple
 ExecStart=/usr/local/bin/remindd
-User=reminder
-Group=reminder
-Restart=on-failure
-RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target

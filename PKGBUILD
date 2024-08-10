@@ -10,12 +10,12 @@ source=("$pkgname-$pkgver.tar.gz::https://github.com/carrotfarmer/remindme/archi
 sha256sums=("295406f31ce99672ed480748639a8b0e6e156f45a1bc73311c64cab75282a180")
 
 build() {
-    cd "$srcdir/$pkgname-$pkgver"
+    cd "$srcdir/remindme-$pkgver"
     make
 }
 
 package() {
-    install -Dm755 "$srcdir/$pkgname-$pkgver/remindme" "$pkgdir/usr/local/bin/remindme"
-    install -Dm755 "$srcdir/$pkgname-$pkgver/remindd" "$pkgdir/usr/local/bin/remindd"
+    install -Dm755 "$srcdir/$pkgname-$pkgver/build/remindme" "$pkgdir/usr/local/bin/remindme"
+    install -Dm755 "$srcdir/$pkgname-$pkgver/build/remindd" "$pkgdir/usr/local/bin/remindd"
     install -Dm644 "$srcdir/$pkgname-$pkgver/systemd/remindd.service" "$pkgdir/usr/lib/systemd/system/remindd.service"
 }
