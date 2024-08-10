@@ -7,7 +7,7 @@ url="https://github.com/carrotfarmer/remindme"
 license=("MIT")
 depends=("libnotify")
 source=("$pkgname-$pkgver.tar.gz::https://github.com/carrotfarmer/remindme/archive/v$pkgver.tar.gz")
-sha256sums=("025728f7cc629713857aa386d7eaa295dc4507935b5a07bf7a5136ee2064ad4f")
+sha256sums=('SKIP')
 
 build() {
     cd "$srcdir/remindme-$pkgver"
