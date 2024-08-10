@@ -1,4 +1,4 @@
-# Maintainer: Dhruva Srinivas <dhruvas17068@mail.com>
+# Maintainer: Dhruva Srinivas <dhruva******@gmail.com>
 
 pkgname=remindme-cli
 pkgver=1.0.0

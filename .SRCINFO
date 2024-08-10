@@ -1,0 +1,12 @@
+pkgbase = remindme-cli
+	pkgdesc = Lightweight system reminders for the command line
+	pkgver = 1.0.0
+	pkgrel = 1
+	url = https://github.com/carrotfarmer/remindme
+	arch = x86_64
+	license = MIT
+	depends = libnotify
+	source = remindme-cli-1.0.0.tar.gz::https://github.com/carrotfarmer/remindme/archive/v1.0.0.tar.gz
+	sha256sums = SKIP
+
+pkgname = remindme-cli
