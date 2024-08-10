@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
 
   if (file == NULL) {
     fprintf(stderr, "err: failed to open file\n");
+    perror("fopen");
     return EXIT_ERR_OPEN_FILE;
   }
 
@@ -95,7 +96,6 @@ int main(int argc, char **argv) {
     exit(EXIT_INVALID_ARGS);
   }
 
-  free(file_path);
   fclose(file);
 
   return EXIT_SUCCESS;

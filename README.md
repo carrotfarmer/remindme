@@ -15,8 +15,9 @@ yay -S remindme-cli
 Then, enable and start the `remindd` service:
 
 ```bash
-systemctl enable remindd.service
-systemctl start remindd.service
+sudo systemctl daemon-reload
+sudo systemctl enable remindd.service
+sudo systemctl start remindd.service
 ```
 
 ### Manual from Source
@@ -33,8 +34,8 @@ sudo cp systemd/remindd.service /usr/lib/systemd/system/ # move the daemon servi
 Then, enable and start the `remindd` service:
 
 ```bash
-systemctl enable remindd.service
-systemctl start remindd.service
+sudo systemctl enable remindd.service
+sudo systemctl start remindd.service
 ```
 
 ## Usage

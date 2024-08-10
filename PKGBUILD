@@ -18,4 +18,8 @@ package() {
     install -Dm755 "$srcdir/$pkgname-$pkgver/build/remindme" "$pkgdir/usr/local/bin/remindme"
     install -Dm755 "$srcdir/$pkgname-$pkgver/build/remindd" "$pkgdir/usr/local/bin/remindd"
     install -Dm644 "$srcdir/$pkgname-$pkgver/systemd/remindd.service" "$pkgdir/usr/lib/systemd/system/remindd.service"
+
+    # Create /etc/.remindme and set permissions
+    install -Dm644 /dev/null "$pkgdir/etc/.remindme"
+    chmod 666 "$pkgdir/etc/.remindme"
 }
