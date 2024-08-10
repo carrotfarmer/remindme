@@ -1,12 +1,12 @@
 pkgname=remindme
-pkgver=1.0
+pkgver=1.0.0
 pkgrel=1
-pkgdesc="A simple reminder CLI and daemon"
+pkgdesc="Lightweight system reminders for the command line"
 arch=('x86_64')
-url="https://github.com/yourusername/your-project"
-license=('MIT')
-depends=('some-dependency')
-source=("$pkgname-$pkgver.tar.gz::https://github.com/yourusername/your-project/archive/v$pkgver.tar.gz")
+url="https://github.com/carrotfarmer/remindme"
+license=("MIT")
+depends=("libnotify")
+source=("$pkgname-$pkgver.tar.gz::https://github.com/carrotfarmer/remindme/archive/v$pkgver.tar.gz")
 sha256sums=('your-checksum-here')
 
 build() {
