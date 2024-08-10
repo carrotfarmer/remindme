@@ -1,9 +1,15 @@
 [Unit]
-Description=remindme Daemon
+Description=Remindme Daemon
 
 [Service]
-Type=simple
+Type=idle
 ExecStart=/usr/local/bin/remindd
+Restart=always
+RestartSec=10
+KillMode=process
+ProtectSystem=false
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

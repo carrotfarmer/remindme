@@ -8,16 +8,32 @@
 char *get_file_path() { return "/etc/.remindme"; }
 
 char *read_to_buf(FILE *file) {
+  if (file == NULL) {
+    fprintf(stderr, "err: invalid file pointer\n");
+    return NULL;
+  }
+
+  // get the size of the file
   fseek(file, 0, SEEK_END);
-  long fsize = ftell(file);
+  long file_size = ftell(file);
   fseek(file, 0, SEEK_SET);
 
-  char *buf = malloc(fsize + 1);
-  fread(buf, fsize, 1, file);
+  char *buffer = (char *)malloc(file_size + 1); // +1 for null terminator
+  if (buffer == NULL) {
+    perror("error allocating memory");
+    return NULL;
+  }
 
-  buf[fsize] = 0;
+  size_t read_size = fread(buffer, 1, file_size, file);
+  if (read_size != file_size) {
+    perror("error reading file");
+    free(buffer);
+    return NULL;
+  }
 
-  return buf;
+  buffer[file_size] = '\0';
+
+  return buffer;
 }
 
 int delete_reminder(unsigned short id, FILE *file) {
