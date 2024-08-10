@@ -17,5 +17,5 @@ build() {
 package() {
     install -Dm755 "$srcdir/$pkgname-$pkgver/remindme" "$pkgdir/usr/local/bin/remindme"
     install -Dm755 "$srcdir/$pkgname-$pkgver/remindd" "$pkgdir/usr/local/bin/remindd"
-    install -Dm644 "$srcdir/$pkgname-$pkgver/systemd/reminder-daemon.service" "$pkgdir/usr/lib/systemd/system/reminder-daemon.service"
+    install -Dm644 "$srcdir/$pkgname-$pkgver/systemd/remindd.service" "$pkgdir/usr/lib/systemd/system/remindd.service"
 }
