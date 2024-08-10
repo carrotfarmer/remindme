@@ -35,7 +35,8 @@ int main(int argc, char **argv) {
 
   FILE *file;
   char *file_path = get_file_path();
-  file = fopen(file_path, "a+");
+  printf("file path: %s\n", file_path);
+  file = fopen(file_path, "a");
 
   if (file == NULL) {
     fprintf(stderr, "err: failed to open file\n");
@@ -76,23 +77,30 @@ int main(int argc, char **argv) {
       } else {
         printf("reminder with id %d deleted", del_id);
       }
+    } else {
+      printf("err: invalid arguments\n\n");
+      print_help();
+      exit(EXIT_INVALID_ARGS);
     }
   } else if (argc == 4) {
     time_t raw_time = gen_raw_time(argv);
     if (raw_time == -1) {
       fprintf(stderr, "err: invalid time format");
-      return 1;
+      exit(EXIT_INVALID_ARGS);
     }
 
     int id = gen_id();
-    fprintf(file, "%hu === %s === %ld\n", id, argv[1], raw_time);
+
+    if (fprintf(file, "%hu === %s === %ld\n", id, argv[1], raw_time) < 0) {
+      perror("fprintf");
+      exit(EXIT_ERR_OPEN_FILE);
+    }
+
     printf("Reminder \"%s\" set for %s %s", argv[1], argv[2], ctime(&raw_time));
   } else {
     printf("err: invalid arguments\n\n");
     print_help();
 
-    free(file_path);
-    fclose(file);
     exit(EXIT_INVALID_ARGS);
   }
 

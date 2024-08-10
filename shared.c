@@ -38,6 +38,7 @@ int delete_reminder(unsigned short id, FILE *file) {
       success = 0;
     } else {
       fprintf(file, "%s\n", split);
+      fflush(file);
       split = strtok(NULL, "\n");
     }
   }

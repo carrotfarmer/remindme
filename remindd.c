@@ -37,7 +37,6 @@ typedef struct {
 } SignalContext;
 
 static SignalContext context;
-
 static FILE *file;
 
 void init_signal_context(int inotify_fd, int ievent_status, int timer_fd,
@@ -51,26 +50,36 @@ void init_signal_context(int inotify_fd, int ievent_status, int timer_fd,
 
 void signal_handler(int signal) {
   int inotify_close_status = -1;
-  printf("signal received, cleaning up...\n");
+  printf("Signal received, cleaning up...\n");
 
-  inotify_close_status =
-      inotify_rm_watch(context.inotify_fd, context.ievent_status);
-  if (inotify_close_status == -1) {
-    fprintf(stderr, "err: failed to remove inotify watch\n");
+  if (context.ievent_status != -1) {
+    inotify_close_status =
+        inotify_rm_watch(context.inotify_fd, context.ievent_status);
+    if (inotify_close_status == -1) {
+      fprintf(stderr, "err: failed to remove inotify watch\n");
+    }
   }
 
-  int epoll_close_status = close(context.epoll_fd);
-  if (epoll_close_status == -1) {
-    fprintf(stderr, "err: failed to close epoll instance\n");
+  if (context.epoll_fd != -1) {
+    if (close(context.epoll_fd) == -1) {
+      fprintf(stderr, "err: failed to close epoll instance\n");
+    }
   }
 
-  int timer_close_status = close(context.timer_fd);
-  if (timer_close_status == -1) {
-    fprintf(stderr, "err: failed to close timerfd\n");
+  if (context.timer_fd != -1) {
+    if (close(context.timer_fd) == -1) {
+      fprintf(stderr, "err: failed to close timerfd\n");
+    }
   }
 
-  close(context.inotify_fd);
-  fclose(file);
+  if (context.inotify_fd != -1) {
+    close(context.inotify_fd);
+  }
+
+  if (file != NULL) {
+    fclose(file);
+  }
+
   exit(EXIT_SUCCESS);
 }
 
@@ -81,7 +90,7 @@ struct Reminder *get_next_reminder(struct Reminder *reminders) {
   }
 
   struct Reminder *reminder = malloc(sizeof(struct Reminder));
-  // initialize reminder with first reminder
+  // Initialize reminder with the first reminder
   reminder->id = reminders[0].id;
   reminder->message = reminders[0].message;
   reminder->time = reminders[0].time;
@@ -98,7 +107,7 @@ struct Reminder *get_next_reminder(struct Reminder *reminders) {
 
     struct Reminder curr_reminder = {id, message, time};
 
-    // check if current reminder is earlier than reminder
+    // Check if current reminder is earlier than reminder
     if (difftime(curr_reminder.time, reminder->time) < 0) {
       reminder->id = curr_reminder.id;
       reminder->message = curr_reminder.message;
@@ -114,8 +123,7 @@ struct Reminder *get_next_reminder(struct Reminder *reminders) {
 
 void trigger_notification(char *title, char *message) {
   NotifyNotification *notif_handle;
-  int libnotify_status = notify_init("remindme");
-  if (libnotify_status == 0) {
+  if (!notify_init("remindme")) {
     fprintf(stderr, "err: failed to initialize libnotify\n");
     exit(EXIT_ERR_INIT_LIBNOTIFY);
   }
@@ -128,7 +136,8 @@ void trigger_notification(char *title, char *message) {
 }
 
 void load_reminders() {
-  freopen(NULL, "r", file);
+  fclose(file);
+  file = fopen(get_file_path(), "r");
   struct Reminder *reminders = get_reminders(file);
 
   struct Reminder *next_reminder = get_next_reminder(reminders);
@@ -152,14 +161,15 @@ void update_timer(struct Reminder *next_reminder, int timer_fd, int epoll_fd,
   new_value.it_interval.tv_nsec = 0;
 
   if (seconds <= 0) {
-    freopen(NULL, "r", file);
+    fclose(file);
+    file = fopen(get_file_path(), "r");
     trigger_notification("Overdue Reminder!", next_reminder->message);
     delete_reminder(next_reminder->id, file);
 
     load_reminders();
     if (get_reminder_count(file) != 0) {
-      time_t now = time(NULL);
-      time_t seconds = next_reminder->time - now;
+      now = time(NULL);
+      seconds = next_reminder->time - now;
       new_value.it_value.tv_sec = seconds;
     }
   }
@@ -169,7 +179,6 @@ void update_timer(struct Reminder *next_reminder, int timer_fd, int epoll_fd,
     exit(EXIT_ERR_SET_TIMERFD);
   }
 
-  // check if timer_fd already exists in epoll
   ev.data.fd = timer_fd;
   if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, timer_fd, &ev) == -1) {
     if (errno == EEXIST) {
@@ -227,7 +236,7 @@ int main() {
   struct epoll_event ev;
   ev.events = EPOLLIN;
 
-  // initialize timer_fd
+  // Initialize timer_fd
   int timer_fd = timerfd_create(CLOCK_REALTIME, TFD_NONBLOCK);
   if (timer_fd == -1) {
     fprintf(stderr, "err: failed to create timerfd\n");
@@ -237,7 +246,6 @@ int main() {
   load_reminders();
 
   if (get_reminder_count(file) != 0) {
-    freopen(NULL, "r", file);
     update_timer(get_next_reminder(get_reminders(file)), timer_fd, epoll_fd,
                  ev);
   }
@@ -250,6 +258,10 @@ int main() {
 
   init_signal_context(inotify_fd, ievent_status, timer_fd, epoll_fd, ev);
 
+  signal(SIGABRT, signal_handler);
+  signal(SIGINT, signal_handler);
+  signal(SIGTERM, signal_handler);
+
   while (1) {
     struct epoll_event events[2];
     int n = epoll_wait(epoll_fd, events, 2, -1);
@@ -258,10 +270,10 @@ int main() {
       exit(EXIT_ERR_EPOLL_WAIT);
     }
 
-    int reload = false;
+    bool reload = false;
     for (int i = 0; i < n; i++) {
       if (events[i].data.fd == inotify_fd) {
-        // reload reminders
+        // Reload reminders
         printf("Reloading reminders\n");
 
         // Clear the inotify event
@@ -288,18 +300,14 @@ int main() {
     }
 
     if (reload) {
-      freopen(NULL, "r", file);
       load_reminders();
       if (get_reminder_count(file) != 0) {
         update_timer(get_next_reminder(get_reminders(file)), timer_fd, epoll_fd,
                      ev);
       }
-      reload = false;
     }
   }
 
   free(file_path);
-  signal(SIGABRT, signal_handler);
-  signal(SIGINT, signal_handler);
-  signal(SIGTERM, signal_handler);
+  return EXIT_SUCCESS;
 }
