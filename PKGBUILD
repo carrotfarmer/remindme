@@ -1,5 +1,5 @@
 pkgname=remindme-cli
-pkgver=1.0.1
+pkgver=1.0.0
 pkgrel=1
 pkgdesc="Lightweight system reminders for the command line"
 arch=('x86_64')
