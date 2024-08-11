@@ -1,4 +1,4 @@
-pkgbase = remindme-cli
+pkgbase = remind-me-git
 	pkgdesc = Lightweight system reminders for the command line
 	pkgver = 1.0.0
 	pkgrel = 1
@@ -6,7 +6,7 @@ pkgbase = remindme-cli
 	arch = x86_64
 	license = MIT
 	depends = libnotify
-	source = remindme-cli-1.0.0.tar.gz::https://github.com/carrotfarmer/remindme/archive/v1.0.0.tar.gz
+	source = remind-me-git-1.0.0.tar.gz::https://github.com/carrotfarmer/remindme/archive/v1.0.0.tar.gz
 	sha256sums = SKIP
 
-pkgname = remindme-cli
+pkgname = remind-me-git

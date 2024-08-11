@@ -1,6 +1,6 @@
 # Maintainer: Dhruva Srinivas <dhruva******@gmail.com>
 
-pkgname=remindme-cli
+pkgname=remind-me-git
 pkgver=1.0.0
 pkgrel=1
 pkgdesc="Lightweight system reminders for the command line"
