@@ -34,8 +34,8 @@ sudo cp systemd/remindd.service /usr/lib/systemd/system/ # move the daemon servi
 Then, enable and start the `remindd` service:
 
 ```bash
-sudo systemctl --user enable remindd.service
-sudo systemctl --user start remindd.service
+systemctl --user enable remindd.service
+systemctl --user start remindd.service
 ```
 
 ## Usage
@@ -46,13 +46,22 @@ First, ensure that the `remindd` service is running:
 systemctl --user status remindd.service
 ```
 
-To add a reminder, use the `remindme` command:
+To add a reminder, use the `remindme` command with the reminder message and time:
+
+<!-- explain the date formats -->
+
+There are two ways you can specify the time for the reminder:
+
+1. You can specify the time in the [ISO-8601 date-format](https://en.wikipedia.org/wiki/ISO_8601) combined with the 24-hour time: `YYYY-MM-DD HH:MM`
+2. You can specify relative times using `d`, `h`, `m`, `s` for days, hours, minutes, and seconds. Example: `1d 2h 3m`
 
 ```bash
-remindme "Take out the trash" 08/09/2024 15:00
-```
+# sets reminder for August 31, 2024 at 11:59 PM
+remindme "Take out the trash" "2024-08-31 23:59"
 
-Dates must be in the format `MM/DD/YYYY` and times must be in the 24-hour format `HH:MM`.
+# sets reminder for 1 day, 2 hours, and 3 minutes from the current time
+remindme "Take out the trash" "1d 2h 3m"
+```
 
 To list all reminders, use the `remindme` command without any arguments:
 
@@ -63,7 +72,7 @@ remindme
 To remove a reminder, use the `remindme` command with the `-d` flag and the reminder ID:
 
 ```bash
-remindme -d 11025
+remindme -d 3 
 ```
 
 You can also clear all reminders:

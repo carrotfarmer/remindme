@@ -63,35 +63,6 @@ int delete_reminder(unsigned short id, FILE *file) {
   return success;
 }
 
-time_t gen_raw_time(char **str_args) {
-  const char *date_str = str_args[2];
-  const char *time_str = str_args[3];
-
-  struct tm time_info;
-  memset(&time_info, 0, sizeof(struct tm));
-
-  // parse date string
-  int month, day, year;
-  sscanf(date_str, "%d/%d/%d", &month, &day, &year);
-  time_info.tm_mon = month - 1;
-  time_info.tm_mday = day;
-  time_info.tm_year = year - 1900;
-
-  // parse time string
-  int hour, minute;
-  sscanf(time_str, "%d:%d", &hour, &minute);
-  time_info.tm_hour = hour - 1;
-  time_info.tm_min = minute;
-
-  time_t raw_time = mktime(&time_info);
-
-  if (raw_time <= 0) {
-    return -1;
-  }
-
-  return raw_time;
-}
-
 struct Reminder *get_reminders(FILE *file) {
   struct Reminder *reminders =
       malloc(sizeof(struct Reminder) * get_reminder_count(file));

@@ -4,7 +4,6 @@
 #include <time.h>
 
 char *get_file_path();
-time_t gen_raw_time(char **str_args);
 char *read_to_buf(FILE *file);
 
 struct Reminder {
