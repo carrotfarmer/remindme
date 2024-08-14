@@ -98,6 +98,10 @@ time_t gen_raw_time(char **argv) {
 }
 
 void display_reminders(struct Reminder *reminders, int count) {
+  if (count == 0) {
+    return;
+  }
+
   // table header
   printf("+------+------------------------------+-----------------------------+"
          "\n");
