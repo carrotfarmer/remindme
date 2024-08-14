@@ -28,7 +28,7 @@ cd remindme
 make
 sudo cp remindme /usr/local/bin # CLI client
 sudo cp remindd /usr/local/bin # reminder daemon
-sudo cp systemd/remindd.service /usr/lib/systemd/system/ # move the daemon service file to the systemd directory
+sudo cp remindd.service /usr/lib/systemd/system/ # move the daemon service file to the systemd directory
 ```
 
 Then, enable and start the `remindd` service:
