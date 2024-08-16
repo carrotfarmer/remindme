@@ -57,10 +57,13 @@ There are two ways you can specify the time for the reminder:
 
 ```bash
 # sets reminder for August 31, 2024 at 11:59 PM
-remindme "Take out the trash" "2024-08-31 23:59"
+remindme "Take out the trash" 2024/08/31 23:59
 
 # sets reminder for 1 day, 2 hours, and 3 minutes from the current time
-remindme "Take out the trash" "1d 2h 3m"
+remindme "Take out the trash" 1d 2h 3m
+
+# sets reminder for 35 minutes and 30 seconds from the current time
+remindme "Take out the trash" 35m 30s
 ```
 
 To list all reminders, use the `remindme` command without any arguments:
